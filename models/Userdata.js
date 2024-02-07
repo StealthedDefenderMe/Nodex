@@ -10,34 +10,36 @@ const UserdataSchema = new mongoose.Schema({
         ref: 'user'
     },
 
-    name:{
+      title: {
         type: String,
-        required: true
-    },
-
-    contact:{
-        type: Number,
         required: true,
-    },
+      },
 
-    stack:{
+      content: {
+        type: String,
+        required: true,
+      },
+      
+      author: {
+        type: String,
+        required: true,
+      },
+
+      categories: {
+        type: [String],
+        enum: ['Web Development', 'Software', 'Programming', 'Healthcare', 'Travel', 'History', 'Geo-Politics', 'Other'],
+        required: true
+      },
+
+      filepath:{
         type: String,
         required: true
-    },
-
-    workexperience:{
-        type: Number,
-        default: 0
-    },
-
-    linkedlink:{
-        type: String,
-    },
-
-    date:{
+      },
+      
+      date: {
         type: Date,
-        default: Date.now
-    }
+        default: Date.now,
+      },
 })
 
 module.exports = mongoose.model('userdata', UserdataSchema)

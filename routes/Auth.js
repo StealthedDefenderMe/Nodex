@@ -12,15 +12,6 @@ const fetchUser = require('../middleware/fetchUser')
 //ROUTE 1 : Establishing a create user endpoint using POST at - /api/auth/createuser
 router.post(
   "/createuser",
-  [
-    //Catching and declaring the errors..
-    body("name", "Your name should atleast 5 characters").isLength({ min: 5 }),
-    body("email", "Invalid email address").isEmail(),
-    body("contact", "This number is Invalid").isLength({ min: 10 }),
-    body("password", "Your password should atleast 6 characters").isLength({
-      min: 6,
-    }),
-  ],
   async (req, res) => {
     //Fetching the errors in array if there is any..
     const errors = validationResult(req);
@@ -55,9 +46,10 @@ router.post(
         const authtoken = jwt.sign(data, process.env.SECRET_KEY)
 
         res.json({authtoken})
+        res.json({user})
       }
     } catch (error) {
-      res.status(400).json({error: "Some error occurred", message: error.message})
+      res.status(400).json({error: "Some error occurred creating user", message: error.message})
     }
   }
 );
@@ -109,7 +101,7 @@ router.post(
 
 //ROUTE 3 : Geting the details of logged in user using GET at - /api/auth/getuser (login required)
 
-router.post("/getuser", fetchUser, async (req, res) => {
+router.get("/getuser", fetchUser, async (req, res) => {
 
     try {
 

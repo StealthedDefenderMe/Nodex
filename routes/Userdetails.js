@@ -99,64 +99,95 @@ router.post(
   }
 );
 
+
+
+
+
+
+
 //ROUTE 3 : Updating user specific data to database using PUT at - /api/user/updaterecord --> (LogIn required)
 router.put(
   "/updaterecord/:id",
   fetchUser,
+  upload.single('file'),
   [
-    //Catching and declaring the errors..
-    body("title", "Title should atleast 5 characters").isLength({ min: 5 }),
-    body("content", "Title should atleast 100 characters").isLength({
-      min: 100,
-    }),
-    body("categories", "choose one category").exists(),
+    body("title", "Title should be at least 5 characters").isLength({ min: 5 }),
+    body("content", "Content should be at least 100 characters").isLength({ min: 100 }),
   ],
   async (req, res) => {
-    //Fetching the errors in array if there is any..
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, content, categories } = req.body;
+    const { title, content } = req.body;
+    const updateData = {};
 
-    // Creating new object..
-    const newRecord = {};
-
-    // Checking if the data is present in the fields..
     if (title) {
-      newRecord.title = title;
+      updateData.title = title;
     }
     if (content) {
-      newRecord.content = content;
-    }
-    if (categories) {
-      newRecord.categories = categories;
+      updateData.content = content;
     }
 
-    // Finding the note to be updated..
-    let userdata = await Userdata.findById(req.params.id);
+    try {
+      let existingBlog = await Userdata.findById(req.params.id);
 
-    // Catching the error if note doesn't exists..
-    if (!userdata) {
-      return res.status(404).json({ error: "Note doesn't exists" });
+      if (!existingBlog) {
+        return res.status(404).json({ error: "Note doesn't exist" });
+      }
+
+      if (existingBlog.user.toString() !== req.user.id) {
+        return res.status(401).json({ error: "Access denied" });
+      }
+
+      // Update the file path if a new file is uploaded...
+      if (req.file) {
+        // Remove the old file, if it exists...
+        if (existingBlog.filepath) {
+          const oldFilePath = path.join(existingBlog.filepath);
+          console.log(oldFilePath);
+
+          // Check if the old file exists before attempting to delete...
+          if (fs.existsSync(oldFilePath)) {
+            await fs.promises.unlink(oldFilePath);
+            console.log('Old file deleted:', existingBlog.filepath);
+          } else {
+            console.log('Old file does not exist:', existingBlog.filepath);
+          }
+
+          // Update the file path to the new file...
+          updateData.filepath = path.join('uploads', req.file.filename);
+        }
+      }
+
+      // Update the existing note in the database...
+      existingBlog = await Userdata.findByIdAndUpdate(
+        req.params.id,
+        { $set: updateData },
+        { new: true }
+      );
+
+      res.json({ existingBlog });
+    } catch (error) {
+      console.error('Error updating note:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
-
-    // Checkign if data belong to specific user..
-    if (userdata.user.toString() !== req.user.id) {
-      return res.status(401).json({ error: "Access denied" });
-    }
-
-    //Updating the existng note..
-    userdata = await Userdata.findByIdAndUpdate(
-      req.params.id,
-      { $set: newRecord },
-      { new: true }
-    );
-
-    res.json({ userdata });
   }
 );
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //ROUTE 4 : Deleting user specific data to database using DELETE at - /api/user/deleterecord --> (LogIn required)
 router.delete("/deleterecord/:id", fetchUser, async (req, res) => {

@@ -21,6 +21,8 @@ app.use(cors(corsOptions));
 // Available routes..
 app.use('/api/auth', require('./routes/Auth'))
 app.use('/api/user', require('./routes/Userdetails'))
+app.use('/api/about', require('./routes/About'))
+app.use('/api/services', require('./routes/Services'))
 
 // test route..
 const dataArray = [{"id": 1,"name": "Baman Baman"}, 

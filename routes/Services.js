@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const fetchUser = require("../middleware/fetchUser");
-const Userdata = require("../models/Userdata");
+const Service = require("../models/Services")
 const User = require("../models/User");
 const { body, validationResult } = require("express-validator");
 const fs = require('fs');
@@ -12,7 +12,7 @@ const multer = require('multer');
 // Set up multer for handling file uploads...
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // specify the folder where you want to store the uploaded files
+    cb(null, 'serviceuploads/'); // specify the folder where you want to store the uploaded files
   },
   filename: (req, file, cb) => {
     const fileName = `${Date.now()}-${file.originalname}`;
@@ -26,7 +26,7 @@ const upload = multer({ storage: storage });
 const filepath = path.join(__dirname, "..");
 
 // Serve static files from the 'uploads' directory
-router.use('/uploads', express.static(path.join(filepath, 'uploads')));
+router.use('/serviceuploads', express.static(path.join(filepath, 'serviceuploads')));
 
 //ROUTE 1 : Fetching all user specific data using GET at - /api/user/info  --> (LogIn required)
 router.get("/info", fetchUser, async (req, res) => {
@@ -53,16 +53,15 @@ router.get("/info", fetchUser, async (req, res) => {
 
 //ROUTE 2 : Adding user specific data to database using POST at - /api/user/record --> (LogIn required)
 router.post(
-  "/record",
+  "/createservice",
   fetchUser,
   upload.single('file'),
   [
     //Catching and declaring the errors..
     body("title", "Title should atleast 5 characters").isLength({ min: 5 }),
-    body("content", "Title should atleast 100 characters").isLength({
+    body("description", "Title should atleast 10 characters").isLength({
       min: 100,
     }),
-    body("categories", "choose one category").exists(),
   ],
   async (req, res) => {
     
@@ -73,7 +72,7 @@ router.post(
     }
 
     // Handling the uploaded file...
-    const filePath = `uploads/${req.file.filename}`
+    const filePath = `serviceuploads/${req.file.filename}`
 
     // Creating a new note for specific user..
     try {
@@ -81,12 +80,11 @@ router.post(
       // Fetching specific user here..
       const user = await User.findOne({ _id: req.user.id });
 
-      const record = await Userdata.create({
+      const record = await Service.create({
           user: req.user.id,
           title: req.body.title,
-          content: req.body.content,
+          description: req.body.description,
           author: user.name,
-          categories: req.body.categories,
           filepath: filePath
       })
 

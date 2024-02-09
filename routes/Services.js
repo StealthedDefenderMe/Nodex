@@ -29,16 +29,16 @@ const filepath = path.join(__dirname, "..");
 router.use('/serviceuploads', express.static(path.join(filepath, 'serviceuploads')));
 
 //ROUTE 1 : Fetching all user specific data using GET at - /api/user/info  --> (LogIn required)
-router.get("/info", fetchUser, async (req, res) => {
+router.get("/getservice", fetchUser, async (req, res) => {
   try {
 
-    const response = await Userdata.find({ user: req.user.id });
+    const response = await Service.find({ user: req.user.id });
     // res.send(response);
 
     const updatedResponse = response.map(item => {
       return {
         ...item._doc,
-        imagePath: `http://localhost:8000/api/user//${item.filepath}`
+        imagePath: `http://localhost:8000/api/services//${item.filepath}`
       };
     });
 
@@ -52,9 +52,7 @@ router.get("/info", fetchUser, async (req, res) => {
 });
 
 //ROUTE 2 : Adding user specific data to database using POST at - /api/user/record --> (LogIn required)
-router.post(
-  "/createservice",
-  fetchUser,
+router.post("/createservice", fetchUser,
   upload.single('file'),
   [
     //Catching and declaring the errors..
@@ -98,19 +96,14 @@ router.post(
 );
 
 
-
-
-
-
-
 //ROUTE 3 : Updating user specific data to database using PUT at - /api/user/updaterecord --> (LogIn required)
 router.put(
-  "/updaterecord/:id",
+  "/updateservice/:id",
   fetchUser,
   upload.single('file'),
   [
     body("title", "Title should be at least 5 characters").isLength({ min: 5 }),
-    body("content", "Content should be at least 100 characters").isLength({ min: 100 }),
+    body("description", "description should be at least 100 characters").isLength({ min: 100 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -118,55 +111,55 @@ router.put(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, content } = req.body;
+    const { title, description } = req.body;
     const updateData = {};
 
     if (title) {
       updateData.title = title;
     }
-    if (content) {
-      updateData.content = content;
+    if (description) {
+      updateData.description = description;
     }
 
     try {
-      let existingBlog = await Userdata.findById(req.params.id);
+      let existingService = await Service.findById(req.params.id);
 
-      if (!existingBlog) {
+      if (!existingService) {
         return res.status(404).json({ error: "Note doesn't exist" });
       }
 
-      if (existingBlog.user.toString() !== req.user.id) {
+      if (existingService.user.toString() !== req.user.id) {
         return res.status(401).json({ error: "Access denied" });
       }
 
       // Update the file path if a new file is uploaded...
       if (req.file) {
         // Remove the old file, if it exists...
-        if (existingBlog.filepath) {
-          const oldFilePath = path.join(existingBlog.filepath);
+        if (existingService.filepath) {
+          const oldFilePath = path.join(existingService.filepath);
           // console.log(oldFilePath);
 
           // Check if the old file exists before attempting to delete...
           if (fs.existsSync(oldFilePath)) {
             await fs.promises.unlink(oldFilePath);
-            // console.log('Old file deleted:', existingBlog.filepath);
+            console.log('Old file deleted:', existingService.filepath);
           } else {
-            // console.log('Old file does not exist:', existingBlog.filepath);
+            console.log('Old file does not exist:', existingService.filepath);
           }
 
           // Update the file path to the new file...
-          updateData.filepath = path.join('uploads', req.file.filename);
+          updateData.filepath = path.join('serviceuploads', req.file.filename);
         }
       }
 
       // Update the existing note in the database...
-      existingBlog = await Userdata.findByIdAndUpdate(
+      existingService = await Service.findByIdAndUpdate(
         req.params.id,
         { $set: updateData },
         { new: true }
       );
 
-      res.json({ existingBlog });
+      res.json({ existingService });
     } catch (error) {
       console.error('Error updating note:', error);
       res.status(500).json({ error: 'Internal Server Error' });
@@ -187,8 +180,10 @@ router.put(
 
 
 
+
+
 //ROUTE 4 : Deleting user specific data to database using DELETE at - /api/user/deleterecord --> (LogIn required)
-router.delete("/deleterecord/:id", fetchUser, async (req, res) => {
+router.delete("/deleteservice/:id", fetchUser, async (req, res) => {
 
   // Get the current directory of the script
   const currentDirectory = __dirname;
@@ -197,25 +192,25 @@ router.delete("/deleterecord/:id", fetchUser, async (req, res) => {
   const targetDirectory = path.resolve(currentDirectory, '..');
 
   // Finding the note to be deleted..
-  let userdata = await Userdata.findById(req.params.id);
+  let service = await Service.findById(req.params.id);
 
   // Catching the error if record doesn't exists..
-  if (!userdata) {
+  if (!service) {
     return res
       .status(404)
       .json({ error: "Record to be deleted do not exists" });
   }
 
   // Allow deletion only if user own particular note
-  if (userdata.user.toString() !== req.user.id) {
+  if (service.user.toString() !== req.user.id) {
     return res.status(401).json({ error: "Access denied" });
   }
 
   //deleting the existng note..
-  userdata = await Userdata.findByIdAndDelete(req.params.id);
+  service = await Service.findByIdAndDelete(req.params.id);
 
   // Deleting the associated file
-  const filePath = userdata.filepath;
+  const filePath = service.filepath;
     if (filePath) {
       const absoluteFilePath = path.join(targetDirectory, filePath);
       fs.unlinkSync(absoluteFilePath);

@@ -109,12 +109,12 @@ router.post("/createcontact", fetchUser,
 
 //ROUTE 3 : Updating user specific data to database using PUT at - /api/user/updaterecord --> (LogIn required)
 router.put(
-  "/updaterecord/:id",
+  "/updatecontact/:id",
   fetchUser,
   upload.single('file'),
   [
     body("title", "Title should be at least 5 characters").isLength({ min: 5 }),
-    body("content", "Content should be at least 100 characters").isLength({ min: 100 }),
+    body("aboutDesc", "Content should be at least 100 characters").isLength({ min: 100 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -122,7 +122,7 @@ router.put(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, aboutDesc, email } = req.body;
+    const { title, aboutDesc, email, address, copyright } = req.body;
     const updateData = {};
 
     if (title) {
@@ -132,13 +132,13 @@ router.put(
       updateData.aboutDesc = aboutDesc;
     }
     if (address){
-      updateData.address = address
+      updateData.address = address;
     }
     if (email){
-      updateData.email = email
+      updateData.email = email;
     }
     if(copyright){
-      updateData.copyright = copyright
+      updateData.copyright = copyright;
     }
 
     try {
@@ -168,7 +168,7 @@ router.put(
           }
 
           // Update the file path to the new file...
-          updateData.filepath = path.join('uploads', req.file.filename);
+          updateData.filepath = path.join('contactuploads', req.file.filename);
         }
       }
 

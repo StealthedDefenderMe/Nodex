@@ -1,48 +1,48 @@
 const express = require("express");
 const router = express.Router();
 const fetchUser = require("../middleware/fetchUser");
-const Contact = require('../models/Contact')
+const Contact = require("../models/Contact");
 const User = require("../models/User");
 const { body, validationResult } = require("express-validator");
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
 
 // Set up multer for handling file uploads...
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, 'contactuploads/'); // specify the folder where you want to store the uploaded files
-    },
-    filename: (req, file, cb) => {
-      const fileName = `${Date.now()}-${file.originalname}`;
-      cb(null, fileName);
-    },
-  });
+  destination: (req, file, cb) => {
+    cb(null, "contactuploads/"); // specify the folder where you want to store the uploaded files
+  },
+  filename: (req, file, cb) => {
+    const fileName = `${Date.now()}-${file.originalname}`;
+    cb(null, fileName);
+  },
+});
 const upload = multer({ storage: storage });
 
 // Assuming your images are stored in a folder named "images"
 const filepath = path.join(__dirname, "..");
 
 // Serve static files from the 'uploads' directory
-router.use('/contactuploads', express.static(path.join(filepath, 'contactuploads')));
-
+router.use(
+  "/contactuploads",
+  express.static(path.join(filepath, "contactuploads"))
+);
 
 //ROUTE 1 : Fetching all user specific data using GET at - /api/user/info  --> (LogIn required)
 router.get("/getcontact", fetchUser, async (req, res) => {
   try {
-
     const response = await Contact.find({ user: req.user.id });
     // res.send(response);
 
-    const updatedResponse = response.map(item => {
+    const updatedResponse = response.map((item) => {
       return {
         ...item._doc,
-        imagePath: `http://localhost:8000/api/contactus/${item.filepath}`
+        imagePath: `http://localhost:8000/api/contactus/${item.filepath}`,
       };
     });
 
-    res.send(updatedResponse)
-
+    res.send(updatedResponse);
   } catch (error) {
     res
       .status(400)
@@ -50,10 +50,11 @@ router.get("/getcontact", fetchUser, async (req, res) => {
   }
 });
 
-
 // ROUTE 2 : Adding user specific data to database using POST at - /api/contactys/createcontact --> (LogIn required)
-router.post("/createcontact", fetchUser,
-  upload.single('file'),
+router.post(
+  "/createcontact",
+  fetchUser,
+  upload.single("file"),
   [
     //Catching and declaring the errors..
     body("title", "Title should atleast 5 characters").isLength({ min: 5 }),
@@ -62,7 +63,6 @@ router.post("/createcontact", fetchUser,
     }),
   ],
   async (req, res) => {
-    
     //Fetching the errors in array if there is any..
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -70,33 +70,34 @@ router.post("/createcontact", fetchUser,
     }
 
     // Handling the uploaded file...
-    const filePath = `contactuploads/${req.file.filename}`
+    const filePath = `contactuploads/${req.file.filename}`;
 
     // Check if a contact record already exists for the user
     const existingContact = await Contact.findOne({ user: req.user.id });
     if (existingContact) {
-      return res.status(400).json({ error: "Contact record already exists for this user" });
+      return res
+        .status(400)
+        .json({ error: "Contact record already exists for this user" });
     }
 
     // Creating a new note for specific user..
     try {
-      
       // Fetching specific user here..
       const user = await User.findOne({ _id: req.user.id });
 
       const record = await Contact.create({
-          user: req.user.id,
-          author: user.name,
-          title: req.body.title,
-          aboutDesc: req.body.aboutDesc,
-          address: req.body.address,
-          email: req.body.email,
-          copyright: req.body.copyright,
-          author: user.name,
-          filepath: filePath
-      })
+        user: req.user.id,
+        author: user.name,
+        title: req.body.title,
+        aboutDesc: req.body.aboutDesc,
+        address: req.body.address,
+        email: req.body.email,
+        copyright: req.body.copyright,
+        author: user.name,
+        filepath: filePath,
+      });
 
-      res.send(record)
+      res.send(record);
     } catch (error) {
       res
         .status(400)
@@ -105,16 +106,16 @@ router.post("/createcontact", fetchUser,
   }
 );
 
-
-
 //ROUTE 3 : Updating user specific data to database using PUT at - /api/user/updaterecord --> (LogIn required)
 router.put(
   "/updatecontact/:id",
   fetchUser,
-  upload.single('file'),
+  upload.single("file"),
   [
     body("title", "Title should be at least 5 characters").isLength({ min: 5 }),
-    body("aboutDesc", "Content should be at least 100 characters").isLength({ min: 100 }),
+    body("aboutDesc", "Content should be at least 100 characters").isLength({
+      min: 100,
+    }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -131,13 +132,13 @@ router.put(
     if (aboutDesc) {
       updateData.aboutDesc = aboutDesc;
     }
-    if (address){
+    if (address) {
       updateData.address = address;
     }
-    if (email){
+    if (email) {
       updateData.email = email;
     }
-    if(copyright){
+    if (copyright) {
       updateData.copyright = copyright;
     }
 
@@ -168,7 +169,7 @@ router.put(
           }
 
           // Update the file path to the new file...
-          updateData.filepath = path.join('contactuploads', req.file.filename);
+          updateData.filepath = path.join("contactuploads", req.file.filename);
         }
       }
 
@@ -181,20 +182,21 @@ router.put(
 
       res.json({ existingBlog });
     } catch (error) {
-      console.error('Error updating note:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      console.error("Error updating note:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
 
-
 router.post(
   "/managecontact",
   fetchUser,
-  upload.single('file'),
+  upload.single("file"),
   [
     body("title", "Title should at least be 5 characters").isLength({ min: 5 }),
-    body("aboutDesc", "Content should at least be 100 characters").isLength({ min: 100 }),
+    body("aboutDesc", "Content should at least be 100 characters").isLength({
+      min: 100,
+    }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -206,10 +208,9 @@ router.post(
     const filePath = req.file ? `contactuploads/${req.file.filename}` : null;
 
     try {
-      let existingContact = await Contact.findOne({ user: req.user.id });
-
+      const existingContact = await Contact.findOne();
+      // If initial settings already exist, return an error
       if (existingContact) {
-        // Update the existing contact in the database...
         const updateData = {
           title: title || existingContact.title,
           aboutDesc: aboutDesc || existingContact.aboutDesc,
@@ -221,6 +222,7 @@ router.post(
 
         // Update the file path if a new file is uploaded...
         if (req.file) {
+          console.log(req.file, "....................");
           // Remove the old file, if it exists...
           if (existingContact.filepath) {
             const oldFilePath = path.join(existingContact.filepath);
@@ -229,21 +231,21 @@ router.post(
             }
           }
         }
+        Object.assign(existingContact, updateData);
+        await existingContact.save();
 
-        existingContact = await Contact.findOneAndUpdate(
-          { user: req.user.id },
-          { $set: updateData },
-          { new: true }
-        );
+        // existingContact = await Contact.findOneAndUpdate(
+        //   { user: req.user.id },
+        //   { $set: updateData },
+        //   { new: true }
+        // );
 
-        res.json({ existingContact, message: "Contact record updated successfully" });
+        res.json({
+          existingContact,
+          message: "Contact record updated successfully",
+        });
       } else {
-        // Create a new contact record for the user...
-        const user = await User.findOne({ _id: req.user.id });
-
         const newContact = await Contact.create({
-          user: req.user.id,
-          author: user.name,
           title,
           aboutDesc,
           address,
@@ -252,45 +254,75 @@ router.post(
           filepath: filePath,
         });
 
-        res.json({ newContact, message: "Contact record created successfully" });
+        res.json({
+          newContact,
+          message: "Contact record created successfully",
+        });
       }
+
+      // ---------- Prathamesh  Code -------------
+      // let existingContact = await Contact.findOne({ user: req.user.id });
+
+      // if (existingContact) {
+      //   // Update the existing contact in the database...
+      //   const updateData = {
+      //     title: title || existingContact.title,
+      //     aboutDesc: aboutDesc || existingContact.aboutDesc,
+      //     address: address || existingContact.address,
+      //     email: email || existingContact.email,
+      //     copyright: copyright || existingContact.copyright,
+      //     filepath: filePath || existingContact.filepath,
+      //   };
+
+      //   // Update the file path if a new file is uploaded...
+      //   if (req.file) {
+      //     // Remove the old file, if it exists...
+      //     if (existingContact.filepath) {
+      //       const oldFilePath = path.join(existingContact.filepath);
+      //       if (fs.existsSync(oldFilePath)) {
+      //         await fs.promises.unlink(oldFilePath);
+      //       }
+      //     }
+      //   }
+
+      //   existingContact = await Contact.findOneAndUpdate(
+      //     { user: req.user.id },
+      //     { $set: updateData },
+      //     { new: true }
+      //   );
+
+      //   res.json({ existingContact, message: "Contact record updated successfully" });
+      // } else {
+      //   // Create a new contact record for the user...
+      //   const user = await User.findOne({ _id: req.user.id });
+
+      //   const newContact = await Contact.create({
+      //     user: req.user.id,
+      //     author: user.name,
+      //     title,
+      //     aboutDesc,
+      //     address,
+      //     email,
+      //     copyright,
+      //     filepath: filePath,
+      //   });
+
+      //   res.json({ newContact, message: "Contact record created successfully" });
+      // }
     } catch (error) {
-      console.error('Error managing contact:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      console.error("Error managing contact:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ROUTE 3: Deleting About record at -> /api/about/delete/:id (LOGIN REQUIRED)
 router.delete("/deletecontact/:id", fetchUser, async (req, res) => {
-
   // Get the current directory of the script
   const currentDirectory = __dirname;
 
   // Set the desired directory path relative to the current directory
-  const targetDirectory = path.resolve(currentDirectory, '..');
+  const targetDirectory = path.resolve(currentDirectory, "..");
 
   // Finding the note to be deleted..
   let userdata = await Contact.findById(req.params.id);
@@ -312,10 +344,10 @@ router.delete("/deletecontact/:id", fetchUser, async (req, res) => {
 
   // Deleting the associated file
   const filePath = userdata.filepath;
-    if (filePath) {
-      const absoluteFilePath = path.join(targetDirectory, filePath);
-      fs.unlinkSync(absoluteFilePath);
-    }
+  if (filePath) {
+    const absoluteFilePath = path.join(targetDirectory, filePath);
+    fs.unlinkSync(absoluteFilePath);
+  }
 
   res.send("Record has been deleted successfully");
 });

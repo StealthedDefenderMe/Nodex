@@ -51,7 +51,7 @@ router.get("/getcontact", fetchUser, async (req, res) => {
 });
 
 
-//ROUTE 2 : Adding user specific data to database using POST at - /api/contactys/createcontact --> (LogIn required)
+// ROUTE 2 : Adding user specific data to database using POST at - /api/contactys/createcontact --> (LogIn required)
 router.post("/createcontact", fetchUser,
   upload.single('file'),
   [
@@ -109,12 +109,12 @@ router.post("/createcontact", fetchUser,
 
 //ROUTE 3 : Updating user specific data to database using PUT at - /api/user/updaterecord --> (LogIn required)
 router.put(
-  "/updaterecord/:id",
+  "/updatecontact/:id",
   fetchUser,
   upload.single('file'),
   [
     body("title", "Title should be at least 5 characters").isLength({ min: 5 }),
-    body("content", "Content should be at least 100 characters").isLength({ min: 100 }),
+    body("aboutDesc", "Content should be at least 100 characters").isLength({ min: 100 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -122,7 +122,7 @@ router.put(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, aboutDesc, email } = req.body;
+    const { title, aboutDesc, email, address, copyright } = req.body;
     const updateData = {};
 
     if (title) {
@@ -132,13 +132,13 @@ router.put(
       updateData.aboutDesc = aboutDesc;
     }
     if (address){
-      updateData.address = address
+      updateData.address = address;
     }
     if (email){
-      updateData.email = email
+      updateData.email = email;
     }
     if(copyright){
-      updateData.copyright = copyright
+      updateData.copyright = copyright;
     }
 
     try {
@@ -168,7 +168,7 @@ router.put(
           }
 
           // Update the file path to the new file...
-          updateData.filepath = path.join('uploads', req.file.filename);
+          updateData.filepath = path.join('contactuploads', req.file.filename);
         }
       }
 
@@ -186,6 +186,81 @@ router.put(
     }
   }
 );
+
+
+router.post(
+  "/managecontact",
+  fetchUser,
+  upload.single('file'),
+  [
+    body("title", "Title should at least be 5 characters").isLength({ min: 5 }),
+    body("aboutDesc", "Content should at least be 100 characters").isLength({ min: 100 }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { title, aboutDesc, email, address, copyright } = req.body;
+    const filePath = req.file ? `contactuploads/${req.file.filename}` : null;
+
+    try {
+      let existingContact = await Contact.findOne({ user: req.user.id });
+
+      if (existingContact) {
+        // Update the existing contact in the database...
+        const updateData = {
+          title: title || existingContact.title,
+          aboutDesc: aboutDesc || existingContact.aboutDesc,
+          address: address || existingContact.address,
+          email: email || existingContact.email,
+          copyright: copyright || existingContact.copyright,
+          filepath: filePath || existingContact.filepath,
+        };
+
+        // Update the file path if a new file is uploaded...
+        if (req.file) {
+          // Remove the old file, if it exists...
+          if (existingContact.filepath) {
+            const oldFilePath = path.join(existingContact.filepath);
+            if (fs.existsSync(oldFilePath)) {
+              await fs.promises.unlink(oldFilePath);
+            }
+          }
+        }
+
+        existingContact = await Contact.findOneAndUpdate(
+          { user: req.user.id },
+          { $set: updateData },
+          { new: true }
+        );
+
+        res.json({ existingContact, message: "Contact record updated successfully" });
+      } else {
+        // Create a new contact record for the user...
+        const user = await User.findOne({ _id: req.user.id });
+
+        const newContact = await Contact.create({
+          user: req.user.id,
+          author: user.name,
+          title,
+          aboutDesc,
+          address,
+          email,
+          copyright,
+          filepath: filePath,
+        });
+
+        res.json({ newContact, message: "Contact record created successfully" });
+      }
+    } catch (error) {
+      console.error('Error managing contact:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+);
+
 
 
 

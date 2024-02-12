@@ -78,6 +78,58 @@ router.put('/update/:id', fetchUser, async(req, res)=>{
 
 })
 
+router.post('/createOrUpdate/:id', fetchUser, async (req, res) => {
+    try {
+        let existsRecord;
+
+        // If ID is provided, check if the record exists
+        if (req.params.id) {
+            existsRecord = await About.findById(req.params.id);
+
+            // Catching error if the record doesn't exist
+            if (!existsRecord) {
+                return res.status(404).json({ error: "Record doesn't exist" });
+            }
+
+            // Checking if the record belongs to that specific user
+            if (existsRecord.user.toString() !== req.user.id) {
+                return res.status(401).json({ error: "Access denied" });
+            }
+        }
+
+        // Fetching specific user.
+        const user = await User.findById({ _id: req.user.id });
+
+        // If the record exists, update it; if not, create a new record
+        if (existsRecord) {
+            const { title, description, services } = req.body;
+
+            // You can customize the update fields based on your requirements
+            existsRecord.title = title || existsRecord.title;
+            existsRecord.description = description || existsRecord.description;
+            existsRecord.services = services || existsRecord.services;
+
+            // Save the updated record
+            await existsRecord.save();
+            res.send('Record has been updated successfully');
+        } else {
+            const aboutRecord = await About.create({
+                user: req.user.id,
+                author: user.name,
+                title: req.body.title,
+                description: req.body.description,
+                services: req.body.services
+            });
+
+            res.json({ aboutRecord });
+        }
+
+    } catch (error) {
+        res.status(400).json({ error: "Error creating/updating record", message: error.message });
+    }
+});
+
+
 
 
 

@@ -51,7 +51,7 @@ router.get("/getcontact", fetchUser, async (req, res) => {
 });
 
 
-//ROUTE 2 : Adding user specific data to database using POST at - /api/contactys/createcontact --> (LogIn required)
+// ROUTE 2 : Adding user specific data to database using POST at - /api/contactys/createcontact --> (LogIn required)
 router.post("/createcontact", fetchUser,
   upload.single('file'),
   [
@@ -186,6 +186,81 @@ router.put(
     }
   }
 );
+
+
+router.post(
+  "/managecontact",
+  fetchUser,
+  upload.single('file'),
+  [
+    body("title", "Title should at least be 5 characters").isLength({ min: 5 }),
+    body("aboutDesc", "Content should at least be 100 characters").isLength({ min: 100 }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { title, aboutDesc, email, address, copyright } = req.body;
+    const filePath = req.file ? `contactuploads/${req.file.filename}` : null;
+
+    try {
+      let existingContact = await Contact.findOne({ user: req.user.id });
+
+      if (existingContact) {
+        // Update the existing contact in the database...
+        const updateData = {
+          title: title || existingContact.title,
+          aboutDesc: aboutDesc || existingContact.aboutDesc,
+          address: address || existingContact.address,
+          email: email || existingContact.email,
+          copyright: copyright || existingContact.copyright,
+          filepath: filePath || existingContact.filepath,
+        };
+
+        // Update the file path if a new file is uploaded...
+        if (req.file) {
+          // Remove the old file, if it exists...
+          if (existingContact.filepath) {
+            const oldFilePath = path.join(existingContact.filepath);
+            if (fs.existsSync(oldFilePath)) {
+              await fs.promises.unlink(oldFilePath);
+            }
+          }
+        }
+
+        existingContact = await Contact.findOneAndUpdate(
+          { user: req.user.id },
+          { $set: updateData },
+          { new: true }
+        );
+
+        res.json({ existingContact, message: "Contact record updated successfully" });
+      } else {
+        // Create a new contact record for the user...
+        const user = await User.findOne({ _id: req.user.id });
+
+        const newContact = await Contact.create({
+          user: req.user.id,
+          author: user.name,
+          title,
+          aboutDesc,
+          address,
+          email,
+          copyright,
+          filepath: filePath,
+        });
+
+        res.json({ newContact, message: "Contact record created successfully" });
+      }
+    } catch (error) {
+      console.error('Error managing contact:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+);
+
 
 
 
